@@ -1,0 +1,200 @@
+<html>
+<head>
+    <style type="text/css">
+        #info {
+          position: absolute;
+          top: 0px;
+          width: 100%;
+          padding: 10px;
+          text-align: center;
+          color: #ffff00
+        }
+
+        body {
+          overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+    <audio id="collisionSound" style="display:none">
+        <source src="collision3.wav" type="audio/wav">
+    </audio>
+    <div id="info">HW2 Collision</div>
+        <script src="https://threejs.org/build/three.min.js"></script>
+        <script src="https://threejs.org/examples/js/controls/OrbitControls.js"></script>
+        <script type="text/javascript">
+            var camera, scene, renderer;
+            var puck;
+            var walls = [];
+            var pucks = [];
+            var puckLight;
+            var puckRadius = 15;
+            var dt = 0.1;
+            var eps = 1e-3; //0.001
+            var cR = 1.0;
+
+            class ThreeNum{
+                constructor(x, y, z){
+                    this.x = x;
+                    this.y = y;
+                    this.z = z;
+                }
+            }
+
+            class Wall {
+                constructor (position, size) {
+                    this.obj = new THREE.Mesh(new THREE.BoxGeometry(size.x, size.y, size.z), new THREE.MeshPhongMaterial());
+                    this.obj.position.set(position.x, position.y, position.z);
+                    let tmp = 0;
+                    if(position.x == -105 || position.z == -105){
+                        tmp = -100;
+                    }
+                    else tmp = 100;
+
+                    if(position.x == -105 || position.x == 105){
+                        this.point = new THREE.Vector3(tmp, 0, 0);
+                        this.normal = new THREE.Vector3(-1*tmp/Math.abs(tmp), 0, 0);
+                    }
+                    else{
+                        this.point = new THREE.Vector3(0, 0, tmp);
+                        this.normal = new THREE.Vector3(0, 0, -1*tmp/Math.abs(tmp));
+                    }
+
+                    scene.add(this.obj);
+                }
+            }
+
+            class Puck {
+                constructor(position, size, color){
+                    this.puckLight = new THREE.PointLight(color, 1, 100);
+                    this.obj = new THREE.Mesh(new THREE.CylinderGeometry(size.x, size.x, size.y, size.z), new THREE.MeshBasicMaterial());
+                    scene.add(this.obj);
+                    this.obj.position.y = size.y / 2;
+                    scene.add(this.puckLight);
+
+                    this.force = new THREE.Vector3(0, 0, 0);
+                    this.vel = new THREE.Vector3(Math.random() * 6 + 1, 0, Math.random() * 6 + 1);
+                    this.pos = new THREE.Vector3(position.x, position.y, position.z);
+                }
+                calculateWall(wall){
+                    if(this.pos.clone().sub(wall.point).dot(wall.normal) < eps + puckRadius){
+                        var vN = wall.normal.clone().multiplyScalar(this.vel.dot(wall.normal));
+                        var vT = this.vel.clone().sub(vN);
+                        this.vel.copy(vT.add(vN.multiplyScalar(-cR)));
+                        this.pos.add(wall.normal.clone().multiplyScalar(puckRadius-this.pos.clone().sub(wall.point).dot(wall.normal)));
+                        return true;
+                    }
+                    return false;
+                }
+                calculatePuck(puck){
+                    if(this.pos.clone().sub(puck.pos).length() < 2*puckRadius){
+                        var posDist = this.pos.distanceTo(puck.pos);
+                        var p1minp2 = this.pos.clone().add(puck.pos.clone().multiplyScalar(-1));
+                        var v1minv2 = this.vel.clone().add(puck.vel.clone().multiplyScalar(-1));
+                        var p2minp1 = puck.pos.clone().add(this.pos.clone().multiplyScalar(-1));
+                        var v2minv1 = puck.vel.clone().add(this.vel.clone().multiplyScalar(-1));
+                        this.vel.add(p1minp2.multiplyScalar(-v1minv2.dot(p1minp2)/posDist/posDist));
+                        this.pos.add(p1minp2.multiplyScalar(puckRadius-posDist/2));
+
+                        puck.vel.add(p2minp1.multiplyScalar(-v2minv1.dot(p2minp1)/posDist/posDist));
+                        puck.pos.add(p2minp1.multiplyScalar(puckRadius-posDist/2));
+
+                        return true;
+                    }
+                    return false;
+                }
+            }
+
+            init();
+            animate();
+
+
+            function init() {
+                scene = new THREE.Scene();
+
+                renderer = new THREE.WebGLRenderer();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setClearColor(0x888888);
+                document.body.appendChild(renderer.domElement);
+
+                camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 1000);
+                camera.position.set(0, 500, 500);
+                let controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+                ////////////////////////////////////////////////////////////////
+                var gridXZ = new THREE.GridHelper(200, 20, 'red', 'white');
+                //scene.add(gridXZ);
+
+
+                var floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshPhongMaterial());
+                scene.add(floor);
+                floor.rotation.x = -Math.PI/2;
+
+
+                pucks = [
+                    new Puck(new ThreeNum(0, 0, 0), new ThreeNum(puckRadius, 4, 20), 0x5cf2f2),
+                    new Puck(new ThreeNum(80, 0, 0), new ThreeNum(puckRadius, 4, 20), 0xb7f707),
+                    new Puck(new ThreeNum(-50, 0, -50), new ThreeNum(puckRadius, 4, 20), 0xf51414),
+                    new Puck(new ThreeNum(80, 0, -30), new ThreeNum(puckRadius, 4, 20), 0xffc830),
+                    new Puck(new ThreeNum(-80, 0, 50), new ThreeNum(puckRadius, 4, 20), 0x1a17bf)
+                ]
+
+                var light = new THREE.AmbientLight(0x404040);
+                scene.add(light);
+                walls = [
+                    new Wall(new ThreeNum(-105, 10, 0), new ThreeNum(10, 20, 200)),
+                    new Wall(new ThreeNum(105, 10, 0), new ThreeNum(10, 20, 200)),
+                    new Wall(new ThreeNum(0, 10, 105), new ThreeNum(200, 20, 10)),
+                    new Wall(new ThreeNum(0, 10, -105), new ThreeNum(200, 20, 10))
+                ]
+            }
+
+
+            function animate() {
+                for(i=0; i<pucks.length; i++){
+                    let puck = pucks[i];
+                    puck.vel.add(puck.force.clone().multiplyScalar(dt));
+                    puck.pos.add(puck.vel.clone().multiplyScalar(dt));
+                    puck.obj.position.copy(puck.pos);
+                    puck.obj.position.y += 2;
+                    puck.puckLight.position.copy(puck.pos);
+                    puck.puckLight.position.y += 10;
+                }
+
+                for(i=0; i<walls.length; i++){
+                    let wall = walls[i];
+                    for(j=0; j<pucks.length; j++){
+                        let puck = pucks[j];
+                        collision = puck.calculateWall(wall);
+                        if(collision){
+                            document.getElementById('collisionSound').play();
+                            // console.log('collision wall');
+                        }
+                    }
+                }
+                for(i=0; i<pucks.length-1; i++){
+                    for(j=i+1; j<pucks.length; j++){
+                        let puck1 = pucks[i];
+                        let puck2 = pucks[j];
+                        collision = puck1.calculatePuck(puck2);
+                        if(collision){
+                            document.getElementById('collisionSound').play();
+                            // console.log('collision puck');
+                        }
+                    }
+                }
+
+                requestAnimationFrame(animate);
+                render();
+            }
+
+            function render() {
+                renderer.render(scene, camera);
+            }
+
+  </script>
+
+</body>
+</html>
+
