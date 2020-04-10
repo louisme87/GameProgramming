@@ -68,7 +68,7 @@
             class Puck {
                 constructor(position, size, color){
                     this.puckLight = new THREE.PointLight(color, 1, 100);
-                    this.obj = new THREE.Mesh(new THREE.CylinderGeometry(size.x, size.x, size.y, size.z), new THREE.MeshBasicMaterial());
+                    this.obj = new THREE.Mesh(new THREE.CylinderGeometry(size.x, size.x, size.y, size.z), new THREE.MeshBasicMaterial({color:color}));
                     scene.add(this.obj);
                     this.obj.position.y = size.y / 2;
                     scene.add(this.puckLight);

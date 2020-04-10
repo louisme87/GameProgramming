@@ -43,8 +43,6 @@ var head, arm, torso, leg;
 var thetaRound = 0;
 
 var gcontrol;
-
-////////////////////
 var theta1 = 0, theta2 = 0;
 
 var pose1 = {
@@ -65,7 +63,6 @@ var clock = new THREE.Clock();
 var ts = clock.getElapsedTime();  // start time
 var intKey = [];
 var audio;
-///////////////
 init();
 animate();
 
@@ -170,8 +167,6 @@ function makeArm() {
 	body.position.x = 3.82*k/2;
 	group.add (new THREE.AxesHelper (k));
 	return group;
-
-
 }
 function makeLeg() {
 	var group = new THREE.Group();
@@ -316,9 +311,7 @@ function loadJSON() {
 }
 }
 function render() {
-
   renderer.render(scene, camera);
-
 }
 
 </script>
